@@ -200,7 +200,7 @@ A aplicação usa `ddl-auto=update` para criar a tabela `cartoes` na primeira su
 5. Transações **não** são persistidas (conforme o briefing).
 6. `GET /cartoes/{id}` devolve o `BigDecimal` serializado (`500.00`), não um objeto JSON.
 7. `POST /transacoes` responde `text/plain` (`OK` ou o motivo), não JSON, para o body bater com o briefing sem aspas.
-8. Valor da transação deve ser ≥ `0.01`.
+8. Valor da transação deve ser ≥ `0.01`. O briefing não define payload inválido; Bean Validation responde **400** (não 422) para `valor` nulo ou menor que 0,01 e para campos em branco. O JSON de **resposta** de cartão segue o briefing com `senha` antes de `numeroCartao`.
 9. Número do cartão não é validado como PAN/Luhn — o briefing não exige.
 10. MySQL 5.7 do compose é antigo; em máquinas novas a imagem pode exigir plataforma `linux/amd64`. Se o container não subir, use `docker compose up` a partir da pasta `docker/` inalterada e verifique o log do MySQL.
 11. `/swagger-ui/**` e `/v3/api-docs/**` ficam **públicos** para o avaliador abrir a documentação. Os contratos (`/cartoes`, `/transacoes`) continuam exigindo Basic Auth.

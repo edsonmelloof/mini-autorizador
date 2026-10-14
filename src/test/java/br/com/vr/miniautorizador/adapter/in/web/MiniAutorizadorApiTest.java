@@ -118,6 +118,14 @@ class MiniAutorizadorApiTest {
 	void semAutenticacaoRetorna401() throws Exception {
 		mockMvc.perform(get("/cartoes/6549873025634501"))
 			.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/cartoes")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"numeroCartao\":\"1\",\"senha\":\"1234\"}"))
+			.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/transacoes")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"numeroCartao\":\"1\",\"senhaCartao\":\"1234\",\"valor\":10.00}"))
+			.andExpect(status().isUnauthorized());
 	}
 
 	@Test

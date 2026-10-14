@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,27 +27,25 @@ public class TransacaoController {
 
 	@PostMapping(path = "/transacoes", produces = MediaType.TEXT_PLAIN_VALUE)
 	@Operation(summary = "Autorizar transação e debitar o saldo")
-	@ApiResponses({
-		@ApiResponse(
-			responseCode = "201",
-			description = "Autorizada",
-			content = @Content(
-				mediaType = MediaType.TEXT_PLAIN_VALUE,
-				schema = @Schema(type = "string"),
-				examples = @ExampleObject(value = "OK"))),
-		@ApiResponse(
-			responseCode = "422",
-			description = "Regra de autorização recusou",
-			content = @Content(
-				mediaType = MediaType.TEXT_PLAIN_VALUE,
-				schema = @Schema(type = "string"),
-				examples = {
-					@ExampleObject(name = "saldo", value = "SALDO_INSUFICIENTE"),
-					@ExampleObject(name = "senha", value = "SENHA_INVALIDA"),
-					@ExampleObject(name = "cartao", value = "CARTAO_INEXISTENTE")
-				})),
-		@ApiResponse(responseCode = "401", description = "Sem Basic Auth válido", content = @Content)
-	})
+	@ApiResponse(
+		responseCode = "201",
+		description = "Autorizada",
+		content = @Content(
+			mediaType = MediaType.TEXT_PLAIN_VALUE,
+			schema = @Schema(type = "string"),
+			examples = @ExampleObject(value = "OK")))
+	@ApiResponse(
+		responseCode = "422",
+		description = "Regra de autorização recusou",
+		content = @Content(
+			mediaType = MediaType.TEXT_PLAIN_VALUE,
+			schema = @Schema(type = "string"),
+			examples = {
+				@ExampleObject(name = "saldo", value = "SALDO_INSUFICIENTE"),
+				@ExampleObject(name = "senha", value = "SENHA_INVALIDA"),
+				@ExampleObject(name = "cartao", value = "CARTAO_INEXISTENTE")
+			}))
+	@ApiResponse(responseCode = "401", description = "Sem Basic Auth válido", content = @Content)
 	public ResponseEntity<String> autorizar(@Valid @RequestBody TransacaoRequest request) {
 		return switch (autorizarTransacao.autorizar(request.paraDominio())) {
 			case ResultadoAutorizacao.Aprovada() -> ResponseEntity.status(HttpStatus.CREATED).body("OK");

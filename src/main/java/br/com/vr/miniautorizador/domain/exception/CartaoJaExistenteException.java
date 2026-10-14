@@ -1,10 +1,5 @@
 package br.com.vr.miniautorizador.domain.exception;
 
-import lombok.Getter;
-import lombok.experimental.Accessors;
-
-@Getter
-@Accessors(fluent = true)
 public class CartaoJaExistenteException extends RuntimeException {
 
 	private final String numeroCartao;
@@ -14,5 +9,13 @@ public class CartaoJaExistenteException extends RuntimeException {
 		super("Cartão já existe");
 		this.numeroCartao = numeroCartao;
 		this.senha = senha;
+	}
+
+	public String numeroCartao() {
+		return numeroCartao;
+	}
+
+	public String senha() {
+		return senha;
 	}
 }

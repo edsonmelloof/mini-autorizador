@@ -8,12 +8,10 @@ import br.com.vr.miniautorizador.domain.port.out.CartaoRepository;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class FakeCartaoRepository implements CartaoRepository {
 
 	private final Map<String, Cartao> cartoes = new ConcurrentHashMap<>();
-	private final AtomicInteger debitosConcorrentesRecusados = new AtomicInteger();
 
 	@Override
 	public boolean existe(NumeroCartao numero) {
@@ -44,18 +42,11 @@ public class FakeCartaoRepository implements CartaoRepository {
 					));
 					return 1;
 				})
-				.orElseGet(() -> {
-					debitosConcorrentesRecusados.incrementAndGet();
-					return 0;
-				});
+				.orElse(0);
 		}
 	}
 
 	public Cartao obrigatorio(NumeroCartao numero) {
 		return buscarPorNumero(numero).orElseThrow();
-	}
-
-	public int debitosRecusados() {
-		return debitosConcorrentesRecusados.get();
 	}
 }
