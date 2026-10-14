@@ -13,7 +13,7 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(CartaoJaExistenteException.class)
 	public ResponseEntity<CartaoResponse> cartaoJaExistente(CartaoJaExistenteException ex) {
-		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+		return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
 			.body(new CartaoResponse(ex.senha(), ex.numeroCartao()));
 	}
 

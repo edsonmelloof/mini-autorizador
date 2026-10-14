@@ -24,4 +24,12 @@ class CartaoTest {
 		assertThat(cartao.possuiSaldo(Dinheiro.de("10.00"))).isTrue();
 		assertThat(cartao.possuiSaldo(Dinheiro.de("10.01"))).isFalse();
 	}
+
+	@Test
+	void igualdadePorNumeroSenhaHashESaldo() {
+		var a = Cartao.reconstituir(NumeroCartao.de("123"), "h", Dinheiro.de("10.00"));
+		var b = Cartao.reconstituir(NumeroCartao.de("123"), "h", Dinheiro.de("10.00"));
+		assertThat(a).isEqualTo(b).hasSameHashCodeAs(b);
+		assertThat(a).isNotEqualTo(Cartao.reconstituir(NumeroCartao.de("123"), "h", Dinheiro.de("9.99")));
+	}
 }

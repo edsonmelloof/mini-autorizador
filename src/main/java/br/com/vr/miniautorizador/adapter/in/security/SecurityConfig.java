@@ -17,33 +17,41 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http
-			.csrf(AbstractHttpConfigurer::disable)
-			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.httpBasic(Customizer.withDefaults())
-			.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
-		return http.build();
-	}
+  @Bean
+  SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    http.csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .httpBasic(Customizer.withDefaults())
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**",
+                        "/webjars/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated());
+    return http.build();
+  }
 
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	}
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+  }
 
-	@Bean
-	UserDetailsService userDetailsService(
-		@Value("${app.security.username}") String username,
-		@Value("${app.security.password}") String password,
-		PasswordEncoder passwordEncoder
-	) {
-		return new InMemoryUserDetailsManager(
-			User.builder()
-				.username(username)
-				.password(passwordEncoder.encode(password))
-				.roles("USER")
-				.build()
-		);
-	}
+  @Bean
+  UserDetailsService userDetailsService(
+      @Value("${app.security.username}") String username,
+      @Value("${app.security.password}") String password,
+      PasswordEncoder passwordEncoder) {
+    return new InMemoryUserDetailsManager(
+        User.builder()
+            .username(username)
+            .password(passwordEncoder.encode(password))
+            .roles("USER")
+            .build());
+  }
 }

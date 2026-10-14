@@ -13,6 +13,8 @@ cd ..
 
 A API sobe em `http://localhost:8080`. Autenticação **HTTP Basic**: usuário `username`, senha `password`.
 
+Swagger UI: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) (OpenAPI em `/v3/api-docs`). A documentação é pública; **Try it out** nos endpoints de negócio continua exigindo Basic Auth (`Authorize` no Swagger).
+
 ```bash
 ./mvnw test
 ```
@@ -30,6 +32,115 @@ Os endpoints seguem exatamente o briefing do teste:
 | `POST` | `/transacoes` | `201` + `OK` | `422` + `SALDO_INSUFICIENTE` \| `SENHA_INVALIDA` \| `CARTAO_INEXISTENTE` |
 
 Qualquer chamada sem Basic Auth válido responde `401`.
+
+`POST /transacoes` usa `text/plain` de propósito. O briefing pede body `OK` ou `SALDO_INSUFICIENTE` (texto cru). Com `application/json` o Jackson serializaria `"OK"` (com aspas) e o teste da avaliação falharia.
+
+## Exemplos de request e response
+
+Autenticação em todos os exemplos: `Authorization: Basic` (`username` / `password`). Sem isso, a API responde `401` sem body de negócio.
+
+### Criar cartão — `POST /cartoes`
+
+Request:
+
+```http
+POST /cartoes HTTP/1.1
+Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+Content-Type: application/json
+
+{
+  "numeroCartao": "6549873025634501",
+  "senha": "1234"
+}
+```
+
+Sucesso (`201`):
+
+```json
+{
+  "senha": "1234",
+  "numeroCartao": "6549873025634501"
+}
+```
+
+Cartão já existente (`422`) — o mesmo JSON.
+
+### Consultar saldo — `GET /cartoes/{numeroCartao}`
+
+Request:
+
+```http
+GET /cartoes/6549873025634501 HTTP/1.1
+Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+```
+
+Sucesso (`200`) — número, não objeto JSON:
+
+```
+500.00
+```
+
+Depois de um débito de R$ 10,00:
+
+```
+490.00
+```
+
+Cartão inexistente (`404`) — sem body.
+
+### Autorizar transação — `POST /transacoes`
+
+Request:
+
+```http
+POST /transacoes HTTP/1.1
+Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=
+Content-Type: application/json
+
+{
+  "numeroCartao": "6549873025634501",
+  "senhaCartao": "1234",
+  "valor": 10.00
+}
+```
+
+Sucesso (`201`, `Content-Type: text/plain`):
+
+```
+OK
+```
+
+Recusas (`422`, `text/plain`) — um destes textos, sem aspas:
+
+```
+SALDO_INSUFICIENTE
+SENHA_INVALIDA
+CARTAO_INEXISTENTE
+```
+
+### Sem autenticação
+
+```http
+GET /cartoes/6549873025634501 HTTP/1.1
+```
+
+Resposta: `401`.
+
+### Os mesmos fluxos com `curl`
+
+```bash
+curl -u username:password -H 'Content-Type: application/json' \
+  -d '{"numeroCartao":"6549873025634501","senha":"1234"}' \
+  http://localhost:8080/cartoes
+
+curl -u username:password http://localhost:8080/cartoes/6549873025634501
+
+curl -u username:password -H 'Content-Type: application/json' \
+  -d '{"numeroCartao":"6549873025634501","senhaCartao":"1234","valor":10.00}' \
+  http://localhost:8080/transacoes
+
+curl -i http://localhost:8080/cartoes/6549873025634501
+```
 
 ## Arquitetura hexagonal
 
@@ -52,7 +163,8 @@ Dependências apontam para dentro: adapters implementam `CartaoRepository` e `Co
 - **Chain of Responsibility**: `CartaoExistenteRegra` → `SenhaCorretaRegra` → `SaldoDisponivelRegra`. A primeira recusa encerra a cadeia (`Stream.findFirst`).
 - **Strategy**: cada regra implementa `RegraAutorizacao`.
 - **Factory Method**: `Cartao.novo` e `Dinheiro.de`.
-- **Value objects**: `Dinheiro`, `NumeroCartao`.
+- **Value objects / records**: `Cartao`, `Dinheiro`, `NumeroCartao`, DTOs HTTP — imutáveis, sem Lombok.
+- **Lombok**: só na infraestrutura (`@RequiredArgsConstructor` em casos de uso e adapters, `@Getter` na entidade JPA). Sem `@Data` em entidade.
 - **Sealed types**: `ResultadoAutorizacao` (`Aprovada` / `Negada`) — o controller usa `switch` em vez de `if`.
 - **SRP / DIP / OCP**: nova regra de autorização entra na lista da cadeia, sem alterar as existentes.
 
@@ -69,7 +181,9 @@ UPDATE cartoes
    AND saldo >= :valor
 ```
 
-Se duas instâncias tentarem gastar o mesmo R$ 10,00 ao mesmo tempo, só uma linha é atualizada. A outra recebe `SALDO_INSUFICIENTE`. Há também `@Version` na entidade para concorrência otimista em outras escritas.
+Se duas instâncias tentarem gastar o mesmo R$ 10,00 ao mesmo tempo, só uma linha é atualizada. A outra recebe `SALDO_INSUFICIENTE`.
+
+O `@Version` na entidade JPA **não é** o mecanismo desse débito: o `UPDATE` em massa do Hibernate não incrementa a coluna de versão. Ele só protegeria um `save` clássico (ler entidade, alterar saldo, persistir). No caminho de autorização, a garantia é o `AND saldo >= :valor`.
 
 ## Banco de dados
 
@@ -85,14 +199,15 @@ A aplicação usa `ddl-auto=update` para criar a tabela `cartoes` na primeira su
 4. Ordem das regras: existência → senha → saldo. Assim, cartão inexistente nunca vaza como senha inválida.
 5. Transações **não** são persistidas (conforme o briefing).
 6. `GET /cartoes/{id}` devolve o `BigDecimal` serializado (`500.00`), não um objeto JSON.
-7. `POST /transacoes` responde `text/plain` (`OK` ou o motivo).
+7. `POST /transacoes` responde `text/plain` (`OK` ou o motivo), não JSON, para o body bater com o briefing sem aspas.
 8. Valor da transação deve ser ≥ `0.01`.
 9. Número do cartão não é validado como PAN/Luhn — o briefing não exige.
 10. MySQL 5.7 do compose é antigo; em máquinas novas a imagem pode exigir plataforma `linux/amd64`. Se o container não subir, use `docker compose up` a partir da pasta `docker/` inalterada e verifique o log do MySQL.
+11. `/swagger-ui/**` e `/v3/api-docs/**` ficam **públicos** para o avaliador abrir a documentação. Os contratos (`/cartoes`, `/transacoes`) continuam exigindo Basic Auth.
 
 ## Stack
 
-- Java 25, Maven Wrapper, Spring Boot 4.1.1
+- Java 25, Maven Wrapper, Spring Boot 4.1.1, Lombok (infraestrutura), springdoc-openapi 3.1.1
 - Spring Web MVC, Spring Data JPA, Spring Security, Bean Validation
 - MySQL 5.7 (execução), H2 em modo MySQL (testes)
 - JaCoCo

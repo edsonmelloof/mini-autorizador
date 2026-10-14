@@ -4,16 +4,12 @@ import br.com.vr.miniautorizador.domain.port.out.CodificadorSenha;
 
 import java.util.Objects;
 
-public final class Cartao {
+public record Cartao(NumeroCartao numero, String senhaHash, Dinheiro saldo) {
 
-	private final NumeroCartao numero;
-	private final String senhaHash;
-	private final Dinheiro saldo;
-
-	private Cartao(NumeroCartao numero, String senhaHash, Dinheiro saldo) {
-		this.numero = Objects.requireNonNull(numero);
-		this.senhaHash = Objects.requireNonNull(senhaHash);
-		this.saldo = Objects.requireNonNull(saldo);
+	public Cartao {
+		Objects.requireNonNull(numero);
+		Objects.requireNonNull(senhaHash);
+		Objects.requireNonNull(saldo);
 	}
 
 	public static Cartao novo(NumeroCartao numero, String senhaPlana, CodificadorSenha codec) {
@@ -30,17 +26,5 @@ public final class Cartao {
 
 	public boolean possuiSaldo(Dinheiro valor) {
 		return saldo.cobre(valor);
-	}
-
-	public NumeroCartao numero() {
-		return numero;
-	}
-
-	public String senhaHash() {
-		return senhaHash;
-	}
-
-	public Dinheiro saldo() {
-		return saldo;
 	}
 }

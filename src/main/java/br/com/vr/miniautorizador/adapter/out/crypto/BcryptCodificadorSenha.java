@@ -7,15 +7,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class BcryptCodificadorSenha implements CodificadorSenha {
 
-	private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+  private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-	@Override
-	public String codificar(String senhaPlana) {
-		return encoder.encode(senhaPlana);
-	}
+  @Override
+  public String codificar(String senhaPlana) {
+    return encoder.encode(senhaPlana);
+  }
 
-	@Override
-	public boolean confere(String senhaPlana, String senhaHash) {
-		return encoder.matches(senhaPlana, senhaHash);
-	}
+  @Override
+  public boolean confere(String senhaPlana, String senhaHash) {
+    return encoder.matches(senhaPlana, senhaHash);
+  }
 }

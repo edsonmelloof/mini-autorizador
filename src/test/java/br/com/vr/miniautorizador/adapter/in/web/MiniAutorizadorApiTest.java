@@ -120,6 +120,13 @@ class MiniAutorizadorApiTest {
 			.andExpect(status().isUnauthorized());
 	}
 
+	@Test
+	void openApiFicaPublicaParaConsulta() throws Exception {
+		mockMvc.perform(get("/v3/api-docs"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.info.title").value("Mini autorizador"));
+	}
+
 	private String numeroUnico() {
 		return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
 	}

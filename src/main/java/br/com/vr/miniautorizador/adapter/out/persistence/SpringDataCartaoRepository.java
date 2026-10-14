@@ -10,16 +10,18 @@ import java.util.Optional;
 
 public interface SpringDataCartaoRepository extends JpaRepository<CartaoJpaEntity, Long> {
 
-	boolean existsByNumeroCartao(String numeroCartao);
+  boolean existsByNumeroCartao(String numeroCartao);
 
-	Optional<CartaoJpaEntity> findByNumeroCartao(String numeroCartao);
+  Optional<CartaoJpaEntity> findByNumeroCartao(String numeroCartao);
 
-	@Modifying(clearAutomatically = true, flushAutomatically = true)
-	@Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
 		update CartaoJpaEntity c
 		   set c.saldo = c.saldo - :valor
 		 where c.numeroCartao = :numeroCartao
 		   and c.saldo >= :valor
 		""")
-	int debitarSeHouverSaldo(@Param("numeroCartao") String numeroCartao, @Param("valor") BigDecimal valor);
+  int debitarSeHouverSaldo(
+      @Param("numeroCartao") String numeroCartao, @Param("valor") BigDecimal valor);
 }

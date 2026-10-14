@@ -22,31 +22,25 @@ import java.util.List;
 @EnableTransactionManagement(proxyTargetClass = true)
 public class UseCaseConfig {
 
-	@Bean
-	CadeiaRegrasAutorizacao cadeiaRegrasAutorizacao() {
-		return new CadeiaRegrasAutorizacao(List.of(
-			new CartaoExistenteRegra(),
-			new SenhaCorretaRegra(),
-			new SaldoDisponivelRegra()
-		));
-	}
+  @Bean
+  CadeiaRegrasAutorizacao cadeiaRegrasAutorizacao() {
+    return new CadeiaRegrasAutorizacao(
+        List.of(new CartaoExistenteRegra(), new SenhaCorretaRegra(), new SaldoDisponivelRegra()));
+  }
 
-	@Bean
-	CriarCartaoUseCase criarCartaoUseCase(CartaoRepository cartaoRepository, CodificadorSenha codec) {
-		return new CriarCartaoService(cartaoRepository, codec);
-	}
+  @Bean
+  CriarCartaoUseCase criarCartaoUseCase(CartaoRepository cartaoRepository, CodificadorSenha codec) {
+    return new CriarCartaoService(cartaoRepository, codec);
+  }
 
-	@Bean
-	ConsultarSaldoUseCase consultarSaldoUseCase(CartaoRepository cartaoRepository) {
-		return new ConsultarSaldoService(cartaoRepository);
-	}
+  @Bean
+  ConsultarSaldoUseCase consultarSaldoUseCase(CartaoRepository cartaoRepository) {
+    return new ConsultarSaldoService(cartaoRepository);
+  }
 
-	@Bean
-	AutorizarTransacaoUseCase autorizarTransacaoUseCase(
-		CartaoRepository cartaoRepository,
-		CodificadorSenha codec,
-		CadeiaRegrasAutorizacao cadeia
-	) {
-		return new AutorizarTransacaoService(cartaoRepository, codec, cadeia);
-	}
+  @Bean
+  AutorizarTransacaoUseCase autorizarTransacaoUseCase(
+      CartaoRepository cartaoRepository, CodificadorSenha codec, CadeiaRegrasAutorizacao cadeia) {
+    return new AutorizarTransacaoService(cartaoRepository, codec, cadeia);
+  }
 }
