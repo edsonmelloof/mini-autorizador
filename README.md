@@ -157,6 +157,193 @@ adapter/out/crypto      → BCrypt da senha do cartão
 
 Dependências apontam para dentro: adapters implementam `CartaoRepository` e `CodificadorSenha`; a aplicação orquestra os ports de entrada.
 
+### Diagrama de classes
+
+```mermaid
+classDiagram
+  direction TB
+
+  class CartaoController {
+    +criar(CartaoRequest)
+    +saldo(numero)
+  }
+  class TransacaoController {
+    +autorizar(TransacaoRequest)
+  }
+  class CriarCartaoUseCase {
+    <<interface>>
+    +criar(numero, senha)
+  }
+  class ConsultarSaldoUseCase {
+    <<interface>>
+    +saldo(numero)
+  }
+  class AutorizarTransacaoUseCase {
+    <<interface>>
+    +autorizar(Transacao)
+  }
+  class CriarCartaoService {
+    +criar(numero, senha)
+  }
+  class ConsultarSaldoService {
+    +saldo(numero)
+  }
+  class AutorizarTransacaoService {
+    +autorizar(Transacao)
+  }
+  class CartaoRepository {
+    <<interface>>
+    +existe(numero)
+    +salvar(Cartao)
+    +buscarPorNumero(numero)
+    +debitarSeHouverSaldo(numero, valor)
+  }
+  class CodificadorSenha {
+    <<interface>>
+    +codificar(senha)
+    +confere(senha, hash)
+  }
+  class Cartao {
+    <<record>>
+    +numero
+    +senhaHash
+    +saldo
+    +novo()
+    +senhaConfere()
+    +possuiSaldo()
+  }
+  class Transacao {
+    <<record>>
+    +numeroCartao
+    +senhaCartao
+    +valor
+  }
+  class Dinheiro {
+    <<record>>
+    +cobre(outro)
+  }
+  class NumeroCartao {
+    <<record>>
+  }
+  class ResultadoAutorizacao {
+    <<sealed>>
+  }
+  class Aprovada
+  class Negada {
+    +motivo
+  }
+  class MotivoNegacao {
+    <<enum>>
+    SALDO_INSUFICIENTE
+    SENHA_INVALIDA
+    CARTAO_INEXISTENTE
+  }
+  class CadeiaRegrasAutorizacao {
+    +avaliar(contexto)
+  }
+  class RegraAutorizacao {
+    <<interface>>
+    +avaliar(contexto)
+  }
+  class CartaoExistenteRegra
+  class SenhaCorretaRegra
+  class SaldoDisponivelRegra
+  class CartaoPersistenceAdapter
+  class BcryptCodificadorSenha
+
+  CartaoController --> CriarCartaoUseCase
+  CartaoController --> ConsultarSaldoUseCase
+  TransacaoController --> AutorizarTransacaoUseCase
+  CriarCartaoUseCase <|.. CriarCartaoService
+  ConsultarSaldoUseCase <|.. ConsultarSaldoService
+  AutorizarTransacaoUseCase <|.. AutorizarTransacaoService
+  CriarCartaoService --> CartaoRepository
+  CriarCartaoService --> CodificadorSenha
+  ConsultarSaldoService --> CartaoRepository
+  AutorizarTransacaoService --> CartaoRepository
+  AutorizarTransacaoService --> CodificadorSenha
+  AutorizarTransacaoService --> CadeiaRegrasAutorizacao
+  CartaoRepository <|.. CartaoPersistenceAdapter
+  CodificadorSenha <|.. BcryptCodificadorSenha
+  Cartao *-- NumeroCartao
+  Cartao *-- Dinheiro
+  Transacao *-- NumeroCartao
+  Transacao *-- Dinheiro
+  ResultadoAutorizacao <|-- Aprovada
+  ResultadoAutorizacao <|-- Negada
+  Negada --> MotivoNegacao
+  CadeiaRegrasAutorizacao --> RegraAutorizacao
+  RegraAutorizacao <|.. CartaoExistenteRegra
+  RegraAutorizacao <|.. SenhaCorretaRegra
+  RegraAutorizacao <|.. SaldoDisponivelRegra
+```
+
+### Diagrama de sequência — autorizar transação
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Cliente
+  participant REST as TransacaoController
+  participant UC as AutorizarTransacaoService
+  participant Repo as CartaoRepository
+  participant Cadeia as CadeiaRegrasAutorizacao
+  participant Regras as CartaoExistente / Senha / Saldo
+
+  Cliente->>REST: POST /transacoes (Basic Auth)
+  REST->>UC: autorizar(Transacao)
+  UC->>Repo: buscarPorNumero
+  Repo-->>UC: Optional Cartao
+  UC->>Cadeia: avaliar(contexto)
+  Cadeia->>Regras: existência → senha → saldo
+  Regras-->>Cadeia: Optional MotivoNegacao
+  alt alguma regra recusa
+    Cadeia-->>UC: Negada(motivo)
+    UC-->>REST: Negada
+    REST-->>Cliente: 422 + SALDO_INSUFICIENTE | SENHA_INVALIDA | CARTAO_INEXISTENTE
+  else cadeia aprova
+    Cadeia-->>UC: Aprovada
+    UC->>Repo: UPDATE saldo WHERE saldo >= valor
+    alt uma linha atualizada
+      Repo-->>UC: 1
+      UC-->>REST: Aprovada
+      REST-->>Cliente: 201 + OK
+    else corrida de saldo
+      Repo-->>UC: 0
+      UC-->>REST: Negada(SALDO_INSUFICIENTE)
+      REST-->>Cliente: 422 + SALDO_INSUFICIENTE
+    end
+  end
+```
+
+### Diagrama de sequência — criar cartão
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Cliente
+  participant REST as CartaoController
+  participant UC as CriarCartaoService
+  participant Repo as CartaoRepository
+  participant Codec as CodificadorSenha
+
+  Cliente->>REST: POST /cartoes (Basic Auth)
+  REST->>UC: criar(numero, senha)
+  UC->>Repo: existe(numero)
+  alt cartão já existe
+    Repo-->>UC: true
+    UC-->>REST: CartaoJaExistenteException
+    REST-->>Cliente: 422 + JSON senha e numeroCartao
+  else cartão novo
+    Repo-->>UC: false
+    UC->>Codec: codificar(senha)
+    Codec-->>UC: hash BCrypt
+    UC->>Repo: salvar(Cartao saldo 500,00)
+    UC-->>REST: ok
+    REST-->>Cliente: 201 + JSON senha e numeroCartao
+  end
+```
+
 ## Padrões e SOLID
 
 - **Ports and adapters**: casos de uso atrás de interfaces; persistência e HTTP são detalhes.
