@@ -344,6 +344,31 @@ sequenceDiagram
   end
 ```
 
+### Diagrama entidade-relacionamento
+
+O briefing pede persistir **apenas o cartão**, não as transações. Por isso o modelo tem uma tabela só.
+
+```mermaid
+erDiagram
+  CARTOES {
+    bigint id PK "IDENTITY"
+    varchar numero_cartao UK "único, até 32"
+    varchar senha_hash "BCrypt, não a senha plana"
+    decimal saldo "19,2  saldo inicial 500,00"
+    bigint versao "optimistic lock; o débito atômico não usa esta coluna"
+  }
+```
+
+| Coluna | Tipo | Restrição | Papel |
+| --- | --- | --- | --- |
+| `id` | `BIGINT` | PK, auto increment | surrogada |
+| `numero_cartao` | `VARCHAR(32)` | `NOT NULL`, `UNIQUE` | identificador de negócio |
+| `senha_hash` | `VARCHAR` | `NOT NULL` | PIN do cartão (BCrypt) |
+| `saldo` | `DECIMAL(19,2)` | `NOT NULL` | saldo debitado no `UPDATE` atômico |
+| `versao` | `BIGINT` | `NOT NULL` (`@Version`) | não entra no débito em massa |
+
+Não há FK para transação, extrato ou cliente: esses agregados não existem neste exercício.
+
 ## Padrões e SOLID
 
 - **Ports and adapters**: casos de uso atrás de interfaces; persistência e HTTP são detalhes.
@@ -376,7 +401,7 @@ O `@Version` na entidade JPA **não é** o mecanismo desse débito: o `UPDATE` e
 
 Foi escolhido o **MySQL** do `docker-compose.yml` enviado no teste. O serviço Mongo está comentado; a declaração do MySQL **não foi alterada** ( inclusive senha root vazia e `MYSQL_ALLOW_EMPTY_PASSWORD`).
 
-A aplicação usa `ddl-auto=update` para criar a tabela `cartoes` na primeira subida — adequado a este exercício, não a produção.
+A aplicação usa `ddl-auto=update` para criar a tabela `cartoes` na primeira subida — adequado a este exercício, não a produção. O DER está na seção de arquitetura.
 
 ## Suposições
 
